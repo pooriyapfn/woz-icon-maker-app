@@ -1,69 +1,110 @@
-import React, { useState } from "react";
+import React from "react";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import {
-  View,
-  Text,
-  TextInput,
-  Pressable,
-  ActivityIndicator,
-} from "react-native";
-import { useMutation } from "@tanstack/react-query";
-import { supabase } from "./lib/supabase";
+  useCreateJob,
+  useSelectCandidate,
+  JOB_QUERY_KEY,
+} from "./hooks/useJob";
+import { useJobSubscription } from "./hooks/useJobSubscription";
+import type { Job } from "./schemas/job";
+import PromptInput from "./components/PromptInput";
+import CandidateSelector from "./components/CandidateSelector";
+import LoadingState from "./components/LoadingState";
+import DownloadComplete from "./components/DownloadComplete";
+import ErrorDisplay from "./components/ErrorDisplay";
 
 export default function MainScreen() {
-  const [prompt, setPrompt] = useState("");
-
-  const mutation = useMutation({
-    mutationFn: async (newPrompt: string) => {
-      const { data, error } = await supabase
-        .from("jobs")
-        .insert([{ prompt: newPrompt, status: "pending" }])
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: (data) => {
-      console.log("Job created!", data);
-    },
+  const queryClient = useQueryClient();
+  const { data: currentJob } = useQuery<Job | null>({
+    queryKey: [JOB_QUERY_KEY],
+    queryFn: () => null,
+    initialData: null,
+    staleTime: Infinity,
   });
 
-  return (
-    <View className="flex-1 bg-gray-100 items-center justify-center p-5">
-      <View className="bg-white p-8 rounded-xl w-full max-w-lg shadow-lg">
-        <Text className="text-2xl font-bold mb-2 text-center text-gray-900">
-          App Icon Generator
-        </Text>
-        <Text className="text-gray-500 mb-6 text-center">
-          Powered by React Native & Supabase
-        </Text>
+  const createJobMutation = useCreateJob();
+  const selectCandidateMutation = useSelectCandidate();
 
-        <TextInput
-          className="border border-gray-200 rounded-lg p-4 text-lg mb-4 bg-gray-50 focus:border-blue-500 outline-none"
-          placeholder="e.g. A futuristic cyberpunk cat"
-          value={prompt}
-          onChangeText={setPrompt}
+  useJobSubscription(currentJob?.id ?? null);
+
+  const handleCreateJob = (prompt: string) => {
+    createJobMutation.mutate(prompt);
+  };
+
+  const handleSelectCandidate = (index: number) => {
+    if (currentJob) {
+      selectCandidateMutation.mutate({
+        jobId: currentJob.id,
+        selectedIndex: index,
+      });
+    }
+  };
+
+  const handleStartOver = () => {
+    queryClient.setQueryData([JOB_QUERY_KEY], null);
+    createJobMutation.reset();
+    selectCandidateMutation.reset();
+  };
+
+  if (!currentJob) {
+    return (
+      <PromptInput
+        onSubmit={handleCreateJob}
+        isLoading={createJobMutation.isPending}
+      />
+    );
+  }
+
+  // Route based on job status
+  switch (currentJob.status) {
+    case "pending":
+    case "generating_candidates":
+      return (
+        <LoadingState
+          status={currentJob.status}
+          refinedPrompt={currentJob.refined_prompt}
         />
+      );
 
-        <Pressable
-          className={`p-4 rounded-lg items-center ${mutation.isPending ? "bg-gray-400" : "bg-black"}`}
-          onPress={() => mutation.mutate(prompt)}
-          disabled={mutation.isPending}
-        >
-          {mutation.isPending ? (
-            <ActivityIndicator color="white" />
-          ) : (
-            <Text className="text-white font-semibold text-lg">
-              Generate Assets
-            </Text>
-          )}
-        </Pressable>
+    case "waiting_for_selection":
+      return (
+        <CandidateSelector
+          candidates={currentJob.candidate_urls || []}
+          onSelect={handleSelectCandidate}
+          isLoading={selectCandidateMutation.isPending}
+        />
+      );
 
-        {mutation.isError && (
-          <Text className="text-red-500 mt-4 text-center">
-            Error: {mutation.error.message}
-          </Text>
-        )}
-      </View>
-    </View>
-  );
+    case "processing_final":
+      return (
+        <LoadingState
+          status={currentJob.status}
+          refinedPrompt={currentJob.refined_prompt}
+        />
+      );
+
+    case "completed":
+      return (
+        <DownloadComplete
+          downloadUrl={currentJob.zip_download_url || ""}
+          onStartOver={handleStartOver}
+        />
+      );
+
+    case "failed":
+      return (
+        <ErrorDisplay
+          message={currentJob.error_message || "An unknown error occurred"}
+          onRetry={handleStartOver}
+        />
+      );
+
+    default:
+      return (
+        <LoadingState
+          status="pending"
+          refinedPrompt={currentJob.refined_prompt}
+        />
+      );
+  }
 }

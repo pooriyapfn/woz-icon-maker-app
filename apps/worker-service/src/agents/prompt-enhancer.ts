@@ -5,12 +5,15 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_KEY,
 });
 
-export async function improvePrompt(userPrompt: string): Promise<string> {
-  if (!userPrompt) return "";
+export async function improvePrompt(
+  userPrompt: string,
+  count: number = 1,
+): Promise<string[]> {
+  if (!userPrompt) return Array(count).fill("");
 
   if (!process.env.OPENAI_KEY) {
     console.error("Missing OPENAI_KEY");
-    return userPrompt;
+    return Array(count).fill(userPrompt);
   }
 
   try {
@@ -20,28 +23,26 @@ export async function improvePrompt(userPrompt: string): Promise<string> {
         { role: "system", content: PROMPT_ENHANCER_AGENT_PROMPT },
         { role: "user", content: userPrompt },
       ],
-      temperature: 0.7,
-      max_tokens: 500,
+      n: count,
     });
 
-    const content = completion.choices[0]?.message?.content;
+    const improvedPrompts = completion.choices.map((choice) => {
+      const content = choice.message?.content?.trim();
+      return content || userPrompt;
+    });
 
-    if (!content) {
-      console.warn(
-        "!!! No content returned from OpenAI, using original prompt",
-      );
-      return userPrompt;
-    }
+    console.log(`Generated ${improvedPrompts.length} prompt variations`);
+    improvedPrompts.forEach((p, i) =>
+      console.log(`  [${i}]: "${p.slice(0, 50)}..."`),
+    );
 
-    const improvedPrompt = content.trim();
-    console.log(`Prompt Improved: "${improvedPrompt.slice(0, 50)}..."`);
-    return improvedPrompt;
+    return improvedPrompts;
   } catch (error) {
     if (error instanceof OpenAI.APIError) {
       console.error(`OpenAI API Error [${error.status}]: ${error.message}`);
     } else {
       console.error("OpenAI Prompt Improvement Failed:", error);
     }
-    return userPrompt;
+    return Array(count).fill(userPrompt);
   }
 }

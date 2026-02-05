@@ -16,13 +16,9 @@ export async function handleNewJob(job: any) {
       .update({ status: "generating_candidates" })
       .eq("id", id);
 
-    const enhancedPrompt = await improvePrompt(prompt);
-    await supabase
-      .from("jobs")
-      .update({ refined_prompt: enhancedPrompt })
-      .eq("id", id);
+    const enhancedPrompts = await improvePrompt(prompt, 4);
 
-    const base64Images = await generateImageCandidates(enhancedPrompt, 4);
+    const base64Images = await generateImageCandidates(enhancedPrompts);
 
     const candidateUrls: string[] = [];
 

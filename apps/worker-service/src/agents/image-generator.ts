@@ -41,10 +41,10 @@ async function generateSingleImage(prompt: string): Promise<string> {
   throw new Error("No image in response");
 }
 
-export async function generateImageCandidates(prompt: string, count: number = 4): Promise<string[]> {
-  if (!prompt) throw new Error("Prompt is required");
+export async function generateImageCandidates(prompts: string[]): Promise<string[]> {
+  if (!prompts.length) throw new Error("At least one prompt is required");
   if (!process.env.GEMINI_API_KEY) throw new Error("Missing GEMINI_API_KEY");
 
-  const promises = Array(count).fill(prompt).map(p => generateSingleImage(p));
+  const promises = prompts.map(p => generateSingleImage(p));
   return Promise.all(promises);
 }
