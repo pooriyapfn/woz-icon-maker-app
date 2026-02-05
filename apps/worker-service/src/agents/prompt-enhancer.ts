@@ -18,7 +18,7 @@ export async function improvePrompt(
 
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-5-mini",
+      model: "gpt-5-nano",
       messages: [
         { role: "system", content: PROMPT_ENHANCER_AGENT_PROMPT },
         { role: "user", content: userPrompt },

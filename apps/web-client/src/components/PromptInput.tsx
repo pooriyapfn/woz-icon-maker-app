@@ -1,50 +1,28 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, Pressable, ActivityIndicator } from "react-native";
+import {
+  View,
+  Text,
+  TextInput,
+  Pressable,
+  ActivityIndicator,
+  ScrollView,
+} from "react-native";
 import { PromptInputSchema } from "../schemas/job";
+import { ScreenWrapper } from "./ScreenWrapper";
+import { StepIndicator } from "./StepIndicator";
 
 interface PromptInputProps {
   onSubmit: (prompt: string) => void;
   isLoading: boolean;
 }
 
-function StepIndicator({ currentStep }: { currentStep: number }) {
-  return (
-    <View className="flex-row justify-center mb-6">
-      {[1, 2, 3].map((step) => (
-        <View key={step} className="flex-row items-center">
-          <View
-            className={`w-8 h-8 rounded-full items-center justify-center ${
-              step === currentStep
-                ? "bg-indigo-600"
-                : step < currentStep
-                  ? "bg-indigo-400"
-                  : "bg-slate-200"
-            }`}
-          >
-            <Text
-              className={`font-semibold ${
-                step <= currentStep ? "text-white" : "text-slate-500"
-              }`}
-            >
-              {step}
-            </Text>
-          </View>
-          {step < 3 && (
-            <View
-              className={`w-12 h-1 mx-1 ${
-                step < currentStep ? "bg-indigo-400" : "bg-slate-200"
-              }`}
-            />
-          )}
-        </View>
-      ))}
-    </View>
-  );
-}
-
 export default function PromptInput({ onSubmit, isLoading }: PromptInputProps) {
   const [prompt, setPrompt] = useState("");
   const [error, setError] = useState<string | null>(null);
+
+  const characterCount = prompt.length;
+  const isOverLimit = characterCount > 500;
+  const canSubmit = !isLoading && !isOverLimit && characterCount >= 3;
 
   const handleSubmit = () => {
     const result = PromptInputSchema.safeParse(prompt);
@@ -56,66 +34,91 @@ export default function PromptInput({ onSubmit, isLoading }: PromptInputProps) {
     onSubmit(prompt);
   };
 
-  const characterCount = prompt.length;
-  const isOverLimit = characterCount > 500;
-
   return (
-    <View className="flex-1 bg-slate-50 items-center justify-center p-5">
-      <View className="bg-white p-8 rounded-2xl w-full max-w-lg shadow-lg">
-        <StepIndicator currentStep={1} />
+    <ScreenWrapper>
+      <View className="flex-1">
+        <View className="px-5 pt-2 pb-3">
+          <StepIndicator currentStep={1} />
+          <Text className="text-3xl font-bold text-slate-900">
+            Describe your icon
+          </Text>
+          <Text className="text-slate-500 mt-1">
+            Tell us what kind of app icon you want to create.
+          </Text>
+        </View>
 
-        <Text className="text-2xl font-bold mb-2 text-center text-slate-900">
-          Describe Your Icon
-        </Text>
-        <Text className="text-slate-500 mb-6 text-center">
-          Tell us what kind of app icon you want to create
-        </Text>
+        <ScrollView
+          className="flex-1"
+          contentContainerClassName="px-5 pb-28"
+          keyboardShouldPersistTaps="handled"
+        >
+          <View className="bg-slate-50 rounded-2xl border border-slate-200 mt-2">
+            <TextInput
+              className="p-4 text-base text-slate-900 min-h-[140px]"
+              style={{ textAlignVertical: "top" }}
+              placeholder="e.g. Minimal rocket icon, flat design, indigo gradient, subtle shadow"
+              placeholderTextColor="#94a3b8"
+              value={prompt}
+              onChangeText={(text) => {
+                setPrompt(text);
+                if (error) setError(null);
+              }}
+              multiline
+            />
+          </View>
 
-        <View className="mb-4">
-          <TextInput
-            className="border border-slate-200 rounded-xl p-4 text-lg bg-slate-50 min-h-[100px]"
-            style={{ textAlignVertical: "top" }}
-            placeholder="e.g. A minimalist mountain landscape with a sunset, using gradients of orange and purple"
-            value={prompt}
-            onChangeText={(text) => {
-              setPrompt(text);
-              if (error) setError(null);
-            }}
-            multiline
-            numberOfLines={4}
-          />
           <View className="flex-row justify-between mt-2">
-            <Text className={`text-sm ${error ? "text-red-500" : "text-slate-400"}`}>
-              {error || " "}
-            </Text>
             <Text
-              className={`text-sm ${isOverLimit ? "text-red-500" : "text-slate-400"}`}
+              className={`text-xs ${isOverLimit ? "text-red-500" : "text-slate-400"}`}
             >
               {characterCount}/500
             </Text>
           </View>
-        </View>
 
-        <Pressable
-          className={`p-4 rounded-xl items-center ${
-            isLoading || isOverLimit || characterCount < 3
-              ? "bg-slate-300"
-              : "bg-indigo-600 active:bg-indigo-700"
-          }`}
-          onPress={handleSubmit}
-          disabled={isLoading || isOverLimit || characterCount < 3}
-        >
-          {isLoading ? (
-            <ActivityIndicator color="white" />
-          ) : (
-            <Text className="text-white font-semibold text-lg">
-              Generate Candidates
-            </Text>
-          )}
-        </Pressable>
+          {/* <View className="px-4 pb-4">
+              <Text className="text-sm font-semibold text-slate-700 mb-2">
+                Quick styles
+              </Text>
+
+              <View className="flex-row flex-wrap gap-2">
+                {[
+                  "Minimal",
+                  "3D glossy",
+                  "Flat + bold",
+                  "Line icon",
+                  "Gradient",
+                  "Cute mascot",
+                ].map((tag) => (
+                  <Pressable
+                    key={tag}
+                    onPress={() => setPrompt((p) => (p ? `${p}, ${tag}` : tag))}
+                    className="px-3 py-2 rounded-full bg-slate-100 active:bg-slate-200"
+                  >
+                    <Text className="text-slate-700 text-sm">{tag}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View> */}
+        </ScrollView>
+
+        <View className="absolute bottom-0 left-0 right-0 px-5 pb-5 pt-3 bg-slate-50 border-t border-slate-200">
+          <Pressable
+            className={`h-14 rounded-2xl items-center justify-center ${
+              canSubmit ? "bg-indigo-600 active:bg-indigo-700" : "bg-slate-300"
+            }`}
+            onPress={handleSubmit}
+            disabled={!canSubmit}
+          >
+            {isLoading ? (
+              <ActivityIndicator color="white" />
+            ) : (
+              <Text className="text-white font-semibold text-lg">
+                Generate candidates
+              </Text>
+            )}
+          </Pressable>
+        </View>
       </View>
-    </View>
+    </ScreenWrapper>
   );
 }
-
-export { StepIndicator };
