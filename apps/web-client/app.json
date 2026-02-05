@@ -1,0 +1,40 @@
+{
+  "expo": {
+    "name": "Woz Icon Generator",
+    "slug": "woz-icon-generator",
+    "version": "1.0.0",
+    "platforms": [
+      "ios",
+      "android",
+      "web"
+    ],
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#ffffff"
+      },
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "bundler": "metro",
+      "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "supabaseUrl": "https://igjyfbiooihjewoigkmk.supabase.co",
+      "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlnanlmYmlvb2loamV3b2lna21rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAyNzM1MjIsImV4cCI6MjA4NTg0OTUyMn0.LRRSh9glCGnyWoLzill3rpMu2skh2a8C1xfuDDvKDbA"
+    }
+  }
+}
