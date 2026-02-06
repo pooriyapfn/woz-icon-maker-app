@@ -8,10 +8,17 @@ export function useCreateJob() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (prompt: string): Promise<Job> => {
+    mutationFn: async ({
+      prompt,
+      logoUrl,
+    }: {
+      prompt: string;
+      logoUrl: string | null;
+    }): Promise<Job> => {
       const payload: CreateJobPayload = {
         prompt,
         status: "pending",
+        logo_url: logoUrl,
       };
 
       const { data, error } = await supabase

@@ -27,6 +27,7 @@ export const JobSchema = z.object({
   master_image_url: z.string().nullable(),
   zip_download_url: z.string().nullable(),
   error_message: z.string().nullable(),
+  logo_url: z.string().nullable(),
 });
 
 export type Job = z.infer<typeof JobSchema>;
@@ -34,6 +35,7 @@ export type Job = z.infer<typeof JobSchema>;
 export const CreateJobPayload = z.object({
   prompt: PromptInputSchema,
   status: z.literal("pending"),
+  logo_url: z.string().nullable().optional(),
 });
 
 export type CreateJobPayload = z.infer<typeof CreateJobPayload>;

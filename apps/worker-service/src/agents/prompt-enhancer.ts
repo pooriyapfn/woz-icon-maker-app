@@ -8,6 +8,7 @@ const openai = new OpenAI({
 export async function improvePrompt(
   userPrompt: string,
   count: number = 1,
+  hasLogo: boolean = false,
 ): Promise<string[]> {
   if (!userPrompt) return Array(count).fill("");
 
@@ -18,7 +19,7 @@ export async function improvePrompt(
 
   try {
     const completion = await openai.chat.completions.create({
-      model: "gpt-5-nano",
+      model: "gpt-4.1-nano",
       messages: [
         { role: "system", content: PROMPT_ENHANCER_AGENT_PROMPT },
         { role: "user", content: userPrompt },
@@ -26,9 +27,13 @@ export async function improvePrompt(
       n: count,
     });
 
+    const logoSuffix = hasLogo
+      ? " Use the uploaded logo as the visual reference and base the icon design on the logo's style, colors, and shapes."
+      : "";
+
     const improvedPrompts = completion.choices.map((choice) => {
       const content = choice.message?.content?.trim();
-      return content || userPrompt;
+      return (content || userPrompt) + logoSuffix;
     });
 
     console.log(`Generated ${improvedPrompts.length} prompt variations`);

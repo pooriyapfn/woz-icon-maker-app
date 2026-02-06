@@ -4,10 +4,10 @@ import { supabase, WORK_DIR } from "../config.js";
 import { improvePrompt } from "../agents/prompt-enhancer.js";
 import { generateImageCandidates } from "../agents/image-generator.js";
 import { createAssetBundle } from "./processor.js";
-import { downloadFile } from "../utils/download.js";
+import { downloadFile, downloadAsBase64 } from "../utils/download.js";
 
 export async function handleNewJob(job: any) {
-  const { id, prompt } = job;
+  const { id, prompt, logo_url } = job;
   console.log(`[Phase 1] New Job: ${id}`);
 
   try {
@@ -16,9 +16,10 @@ export async function handleNewJob(job: any) {
       .update({ status: "generating_candidates" })
       .eq("id", id);
 
-    const enhancedPrompts = await improvePrompt(prompt, 4);
+    const enhancedPrompts = await improvePrompt(prompt, 4, !!logo_url);
 
-    const base64Images = await generateImageCandidates(enhancedPrompts);
+    const logoBase64 = logo_url ? await downloadAsBase64(logo_url) : undefined;
+    const base64Images = await generateImageCandidates(enhancedPrompts, logoBase64);
 
     const candidateUrls: string[] = [];
 

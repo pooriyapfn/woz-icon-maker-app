@@ -20,10 +20,25 @@ const ResponseSchema = z.object({
   ),
 });
 
-async function generateSingleImage(prompt: string): Promise<string> {
+async function generateSingleImage(
+  prompt: string,
+  logoBase64?: string
+): Promise<string> {
+  const contents = logoBase64
+    ? [
+        {
+          inlineData: {
+            data: logoBase64,
+            mimeType: "image/png",
+          },
+        },
+        { text: prompt },
+      ]
+    : prompt;
+
   const response = await genai.models.generateContent({
     model: "gemini-2.5-flash-image",
-    contents: prompt,
+    contents,
     config: {
       responseModalities: ["IMAGE"],
     },
@@ -41,10 +56,13 @@ async function generateSingleImage(prompt: string): Promise<string> {
   throw new Error("No image in response");
 }
 
-export async function generateImageCandidates(prompts: string[]): Promise<string[]> {
+export async function generateImageCandidates(
+  prompts: string[],
+  logoBase64?: string
+): Promise<string[]> {
   if (!prompts.length) throw new Error("At least one prompt is required");
   if (!process.env.GEMINI_API_KEY) throw new Error("Missing GEMINI_API_KEY");
 
-  const promises = prompts.map(p => generateSingleImage(p));
+  const promises = prompts.map((p) => generateSingleImage(p, logoBase64));
   return Promise.all(promises);
 }

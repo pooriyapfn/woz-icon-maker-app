@@ -27,8 +27,8 @@ export default function MainScreen() {
 
   useJobSubscription(currentJob?.id ?? null);
 
-  const handleCreateJob = (prompt: string) => {
-    createJobMutation.mutate(prompt);
+  const handleCreateJob = (prompt: string, logoUrl: string | null) => {
+    createJobMutation.mutate({ prompt, logoUrl });
   };
 
   const handleSelectCandidate = (index: number) => {
