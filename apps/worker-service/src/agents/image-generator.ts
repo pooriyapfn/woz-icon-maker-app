@@ -14,15 +14,17 @@ const ResponseSchema = z.object({
   candidates: z.array(
     z.object({
       content: z.object({
-        parts: z.array(z.union([ImagePartSchema, z.object({ text: z.string() })])),
+        parts: z.array(
+          z.union([ImagePartSchema, z.object({ text: z.string() })]),
+        ),
       }),
-    })
+    }),
   ),
 });
 
 async function generateSingleImage(
   prompt: string,
-  logoBase64?: string
+  logoBase64?: string,
 ): Promise<string> {
   const contents = logoBase64
     ? [
@@ -45,7 +47,8 @@ async function generateSingleImage(
   });
 
   const parsed = ResponseSchema.safeParse(response);
-  if (!parsed.success) throw new Error(`Invalid response: ${parsed.error.message}`);
+  if (!parsed.success)
+    throw new Error(`Invalid response: ${parsed.error.message}`);
 
   const candidate = parsed.data.candidates[0];
   if (!candidate) throw new Error("No candidates in response");
@@ -58,7 +61,7 @@ async function generateSingleImage(
 
 export async function generateImageCandidates(
   prompts: string[],
-  logoBase64?: string
+  logoBase64?: string,
 ): Promise<string[]> {
   if (!prompts.length) throw new Error("At least one prompt is required");
   if (!process.env.GEMINI_API_KEY) throw new Error("Missing GEMINI_API_KEY");

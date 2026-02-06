@@ -20,7 +20,10 @@ export async function handleNewJob(job: any) {
     const enhancedPrompts = await improvePrompt(prompt, 4, !!logo_url);
 
     const logoBase64 = logo_url ? await downloadAsBase64(logo_url) : undefined;
-    const base64Images = await generateImageCandidates(enhancedPrompts, logoBase64);
+    const base64Images = await generateImageCandidates(
+      enhancedPrompts,
+      logoBase64,
+    );
 
     const candidateUrls: string[] = [];
 
@@ -61,7 +64,9 @@ export async function handleNewJob(job: any) {
 
 export async function handleFinalization(job: any) {
   const { id, candidate_urls, selected_candidate_index } = job;
-  console.log(`[Phase 2] Finalizing Job: ${id} (Selected: #${selected_candidate_index})`);
+  console.log(
+    `[Phase 2] Finalizing Job: ${id} (Selected: #${selected_candidate_index})`,
+  );
 
   const jobDir = path.join(WORK_DIR, id);
   await fs.ensureDir(jobDir);
@@ -79,12 +84,10 @@ export async function handleFinalization(job: any) {
     const zipBuffer = await fs.readFile(zipPath);
     const storagePath = `${id}/assets.zip`;
 
-    await supabase.storage
-      .from("assets")
-      .upload(storagePath, zipBuffer, {
-        contentType: "application/zip",
-        upsert: true,
-      });
+    await supabase.storage.from("assets").upload(storagePath, zipBuffer, {
+      contentType: "application/zip",
+      upsert: true,
+    });
 
     const { data } = supabase.storage.from("assets").getPublicUrl(storagePath);
 
@@ -134,7 +137,8 @@ export async function handleImageEdit(job: any) {
 
     const { data } = supabase.storage.from("assets").getPublicUrl(fileName);
     const newCandidateUrls = [...candidate_urls];
-    newCandidateUrls[selected_candidate_index] = `${data.publicUrl}?t=${Date.now()}`;
+    newCandidateUrls[selected_candidate_index] =
+      `${data.publicUrl}?t=${Date.now()}`;
 
     await supabase
       .from("jobs")
