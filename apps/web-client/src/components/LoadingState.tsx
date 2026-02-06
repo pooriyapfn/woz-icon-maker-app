@@ -23,6 +23,11 @@ const statusMessages: Record<
     message: "Generating icon candidates…",
     step: 1,
   },
+  editing_image: {
+    title: "Editing design",
+    message: "Applying your changes to the icon…",
+    step: 2,
+  },
   processing_final: {
     title: "Finalizing",
     message: "Packaging your icons in all sizes…",

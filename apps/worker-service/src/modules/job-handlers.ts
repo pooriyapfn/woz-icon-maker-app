@@ -3,6 +3,7 @@ import fs from "fs-extra";
 import { supabase, WORK_DIR } from "../config.js";
 import { improvePrompt } from "../agents/prompt-enhancer.js";
 import { generateImageCandidates } from "../agents/image-generator.js";
+import { editImage } from "../agents/image-editor.js";
 import { createAssetBundle } from "./processor.js";
 import { downloadFile, downloadAsBase64 } from "../utils/download.js";
 
@@ -107,5 +108,52 @@ export async function handleFinalization(job: any) {
       .eq("id", id);
   } finally {
     await fs.remove(jobDir);
+  }
+}
+
+export async function handleImageEdit(job: any) {
+  const { id, candidate_urls, selected_candidate_index, edit_prompt } = job;
+  console.log(`[Image Edit] Editing Job: ${id}`);
+
+  try {
+    const selectedUrl = candidate_urls[selected_candidate_index];
+    if (!selectedUrl) throw new Error("Invalid selection index");
+    if (!edit_prompt) throw new Error("Missing edit prompt");
+
+    const sourceBase64 = await downloadAsBase64(selectedUrl);
+    const editedBase64 = await editImage(sourceBase64, edit_prompt);
+
+    const fileName = `${id}/candidates/${selected_candidate_index}.png`;
+    const buffer = Buffer.from(editedBase64, "base64");
+
+    const { error: uploadError } = await supabase.storage
+      .from("assets")
+      .upload(fileName, buffer, { contentType: "image/png", upsert: true });
+
+    if (uploadError) throw uploadError;
+
+    const { data } = supabase.storage.from("assets").getPublicUrl(fileName);
+    const newCandidateUrls = [...candidate_urls];
+    newCandidateUrls[selected_candidate_index] = `${data.publicUrl}?t=${Date.now()}`;
+
+    await supabase
+      .from("jobs")
+      .update({
+        status: "waiting_for_edit_decision",
+        candidate_urls: newCandidateUrls,
+        edit_prompt: null,
+      })
+      .eq("id", id);
+
+    console.log(`[Image Edit] Edit completed for Job ${id}`);
+  } catch (error: any) {
+    console.error(`[Image Edit] Failed:`, error);
+    await supabase
+      .from("jobs")
+      .update({
+        status: "failed",
+        error_message: error.message,
+      })
+      .eq("id", id);
   }
 }

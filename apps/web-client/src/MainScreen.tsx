@@ -2,7 +2,9 @@ import React from "react";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import {
   useCreateJob,
-  useSelectCandidate,
+  useSelectForReview,
+  useRequestEdit,
+  useFinalizeSelection,
   JOB_QUERY_KEY,
 } from "./hooks/useJob";
 import { useJobSubscription } from "./hooks/useJobSubscription";
@@ -12,6 +14,7 @@ import CandidateSelector from "./components/CandidateSelector";
 import LoadingState from "./components/LoadingState";
 import DownloadComplete from "./components/DownloadComplete";
 import ErrorDisplay from "./components/ErrorDisplay";
+import EditDecision from "./components/EditDecision";
 
 export default function MainScreen() {
   const queryClient = useQueryClient();
@@ -23,7 +26,9 @@ export default function MainScreen() {
   });
 
   const createJobMutation = useCreateJob();
-  const selectCandidateMutation = useSelectCandidate();
+  const selectForReviewMutation = useSelectForReview();
+  const requestEditMutation = useRequestEdit();
+  const finalizeSelectionMutation = useFinalizeSelection();
 
   useJobSubscription(currentJob?.id ?? null);
 
@@ -31,19 +36,36 @@ export default function MainScreen() {
     createJobMutation.mutate({ prompt, logoUrl });
   };
 
-  const handleSelectCandidate = (index: number) => {
+  const handleSelectForReview = (index: number) => {
     if (currentJob) {
-      selectCandidateMutation.mutate({
+      selectForReviewMutation.mutate({
         jobId: currentJob.id,
         selectedIndex: index,
       });
     }
   };
 
+  const handleRequestEdit = (editPrompt: string) => {
+    if (currentJob) {
+      requestEditMutation.mutate({
+        jobId: currentJob.id,
+        editPrompt,
+      });
+    }
+  };
+
+  const handleFinalizeSelection = () => {
+    if (currentJob) {
+      finalizeSelectionMutation.mutate({ jobId: currentJob.id });
+    }
+  };
+
   const handleStartOver = () => {
     queryClient.setQueryData([JOB_QUERY_KEY], null);
     createJobMutation.reset();
-    selectCandidateMutation.reset();
+    selectForReviewMutation.reset();
+    requestEditMutation.reset();
+    finalizeSelectionMutation.reset();
   };
 
   if (!currentJob) {
@@ -70,8 +92,33 @@ export default function MainScreen() {
       return (
         <CandidateSelector
           candidates={currentJob.candidate_urls || []}
-          onSelect={handleSelectCandidate}
-          isLoading={selectCandidateMutation.isPending}
+          onSelect={handleSelectForReview}
+          isLoading={selectForReviewMutation.isPending}
+        />
+      );
+
+    case "waiting_for_edit_decision": {
+      const selectedUrl =
+        currentJob.candidate_urls?.[currentJob.selected_candidate_index ?? 0] ||
+        "";
+      return (
+        <EditDecision
+          imageUrl={selectedUrl}
+          onEdit={handleRequestEdit}
+          onStartFresh={handleStartOver}
+          onFinalize={handleFinalizeSelection}
+          isLoading={
+            requestEditMutation.isPending || finalizeSelectionMutation.isPending
+          }
+        />
+      );
+    }
+
+    case "editing_image":
+      return (
+        <LoadingState
+          status={currentJob.status}
+          refinedPrompt={currentJob.refined_prompt}
         />
       );
 

@@ -1,5 +1,5 @@
 import { supabase } from "./config.js";
-import { handleNewJob, handleFinalization } from "./modules/job-handlers.js";
+import { handleNewJob, handleFinalization, handleImageEdit } from "./modules/job-handlers.js";
 
 console.log("Worker started. Listening for jobs...");
 
@@ -22,6 +22,8 @@ supabase
       console.log("[Realtime] UPDATE:", payload.new);
       if (payload.new.status === "processing_final") {
         await handleFinalization(payload.new);
+      } else if (payload.new.status === "editing_image") {
+        await handleImageEdit(payload.new);
       }
     }
   )
