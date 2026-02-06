@@ -3,11 +3,12 @@ import fs from "fs-extra";
 import { supabase, WORK_DIR } from "../config.js";
 import { improvePrompt } from "../agents/prompt-enhancer.js";
 import { generateImageCandidates } from "../agents/image-generator.js";
+import { editImage } from "../agents/image-editor.js";
 import { createAssetBundle } from "./processor.js";
-import { downloadFile } from "../utils/download.js";
+import { downloadFile, downloadAsBase64 } from "../utils/download.js";
 
 export async function handleNewJob(job: any) {
-  const { id, prompt } = job;
+  const { id, prompt, logo_url } = job;
   console.log(`[Phase 1] New Job: ${id}`);
 
   try {
@@ -16,9 +17,13 @@ export async function handleNewJob(job: any) {
       .update({ status: "generating_candidates" })
       .eq("id", id);
 
-    const enhancedPrompts = await improvePrompt(prompt, 4);
+    const enhancedPrompts = await improvePrompt(prompt, 4, !!logo_url);
 
-    const base64Images = await generateImageCandidates(enhancedPrompts);
+    const logoBase64 = logo_url ? await downloadAsBase64(logo_url) : undefined;
+    const base64Images = await generateImageCandidates(
+      enhancedPrompts,
+      logoBase64,
+    );
 
     const candidateUrls: string[] = [];
 
@@ -59,7 +64,9 @@ export async function handleNewJob(job: any) {
 
 export async function handleFinalization(job: any) {
   const { id, candidate_urls, selected_candidate_index } = job;
-  console.log(`[Phase 2] Finalizing Job: ${id} (Selected: #${selected_candidate_index})`);
+  console.log(
+    `[Phase 2] Finalizing Job: ${id} (Selected: #${selected_candidate_index})`,
+  );
 
   const jobDir = path.join(WORK_DIR, id);
   await fs.ensureDir(jobDir);
@@ -77,12 +84,10 @@ export async function handleFinalization(job: any) {
     const zipBuffer = await fs.readFile(zipPath);
     const storagePath = `${id}/assets.zip`;
 
-    await supabase.storage
-      .from("assets")
-      .upload(storagePath, zipBuffer, {
-        contentType: "application/zip",
-        upsert: true,
-      });
+    await supabase.storage.from("assets").upload(storagePath, zipBuffer, {
+      contentType: "application/zip",
+      upsert: true,
+    });
 
     const { data } = supabase.storage.from("assets").getPublicUrl(storagePath);
 
@@ -106,5 +111,53 @@ export async function handleFinalization(job: any) {
       .eq("id", id);
   } finally {
     await fs.remove(jobDir);
+  }
+}
+
+export async function handleImageEdit(job: any) {
+  const { id, candidate_urls, selected_candidate_index, edit_prompt } = job;
+  console.log(`[Image Edit] Editing Job: ${id}`);
+
+  try {
+    const selectedUrl = candidate_urls[selected_candidate_index];
+    if (!selectedUrl) throw new Error("Invalid selection index");
+    if (!edit_prompt) throw new Error("Missing edit prompt");
+
+    const sourceBase64 = await downloadAsBase64(selectedUrl);
+    const editedBase64 = await editImage(sourceBase64, edit_prompt);
+
+    const fileName = `${id}/candidates/${selected_candidate_index}.png`;
+    const buffer = Buffer.from(editedBase64, "base64");
+
+    const { error: uploadError } = await supabase.storage
+      .from("assets")
+      .upload(fileName, buffer, { contentType: "image/png", upsert: true });
+
+    if (uploadError) throw uploadError;
+
+    const { data } = supabase.storage.from("assets").getPublicUrl(fileName);
+    const newCandidateUrls = [...candidate_urls];
+    newCandidateUrls[selected_candidate_index] =
+      `${data.publicUrl}?t=${Date.now()}`;
+
+    await supabase
+      .from("jobs")
+      .update({
+        status: "waiting_for_edit_decision",
+        candidate_urls: newCandidateUrls,
+        edit_prompt: null,
+      })
+      .eq("id", id);
+
+    console.log(`[Image Edit] Edit completed for Job ${id}`);
+  } catch (error: any) {
+    console.error(`[Image Edit] Failed:`, error);
+    await supabase
+      .from("jobs")
+      .update({
+        status: "failed",
+        error_message: error.message,
+      })
+      .eq("id", id);
   }
 }

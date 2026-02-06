@@ -6,32 +6,39 @@ import {
   Pressable,
   ActivityIndicator,
   ScrollView,
+  Image,
 } from "react-native";
 import { PromptInputSchema } from "../schemas/job";
 import { ScreenWrapper } from "./ScreenWrapper";
 import { StepIndicator } from "./StepIndicator";
+import { useLogoUpload } from "../hooks/useLogoUpload";
 
 interface PromptInputProps {
-  onSubmit: (prompt: string) => void;
+  onSubmit: (prompt: string, logoUrl: string | null) => void;
   isLoading: boolean;
 }
 
 export default function PromptInput({ onSubmit, isLoading }: PromptInputProps) {
   const [prompt, setPrompt] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const { logoUri, pickLogo, uploadLogo, clearLogo, isUploading } =
+    useLogoUpload();
 
   const characterCount = prompt.length;
   const isOverLimit = characterCount > 500;
-  const canSubmit = !isLoading && !isOverLimit && characterCount >= 3;
+  const canSubmit =
+    !isLoading && !isUploading && !isOverLimit && characterCount >= 3;
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const result = PromptInputSchema.safeParse(prompt);
     if (!result.success) {
       setError(result.error.issues[0]?.message || "Invalid input");
       return;
     }
     setError(null);
-    onSubmit(prompt);
+
+    const logoUrl = await uploadLogo();
+    onSubmit(prompt, logoUrl);
   };
 
   return (
@@ -75,6 +82,35 @@ export default function PromptInput({ onSubmit, isLoading }: PromptInputProps) {
             </Text>
           </View>
 
+          <View className="mt-4">
+            <Text className="text-sm font-medium text-slate-700 mb-2">
+              Reference logo (optional)
+            </Text>
+            {logoUri ? (
+              <View className="flex-row items-center gap-3">
+                <Image
+                  source={{ uri: logoUri }}
+                  className="w-16 h-16 rounded-xl"
+                />
+                <Pressable
+                  onPress={clearLogo}
+                  className="px-3 py-2 rounded-lg bg-slate-200 active:bg-slate-300"
+                >
+                  <Text className="text-slate-700 text-sm">Remove</Text>
+                </Pressable>
+              </View>
+            ) : (
+              <Pressable
+                onPress={pickLogo}
+                className="h-16 rounded-xl border-2 border-dashed border-slate-300 items-center justify-center active:bg-slate-100"
+              >
+                <Text className="text-slate-500 text-sm">
+                  Tap to add a logo
+                </Text>
+              </Pressable>
+            )}
+          </View>
+
           {/* <View className="px-4 pb-4">
               <Text className="text-sm font-semibold text-slate-700 mb-2">
                 Quick styles
@@ -109,7 +145,7 @@ export default function PromptInput({ onSubmit, isLoading }: PromptInputProps) {
             onPress={handleSubmit}
             disabled={!canSubmit}
           >
-            {isLoading ? (
+            {isLoading || isUploading ? (
               <ActivityIndicator color="white" />
             ) : (
               <Text className="text-white font-semibold text-lg">
