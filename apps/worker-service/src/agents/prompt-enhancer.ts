@@ -28,7 +28,7 @@ export async function improvePrompt(
     });
 
     const logoSuffix = hasLogo
-      ? " Use the uploaded logo as the visual reference and base the icon design on the logo's style, colors, and shapes."
+      ? "\n Important: Use the uploaded photo is the user logo."
       : "";
 
     const improvedPrompts = completion.choices.map((choice) => {
@@ -37,9 +37,7 @@ export async function improvePrompt(
     });
 
     console.log(`Generated ${improvedPrompts.length} prompt variations`);
-    improvedPrompts.forEach((p, i) =>
-      console.log(`  [${i}]: "${p.slice(0, 50)}..."`),
-    );
+    improvedPrompts.forEach((p, i) => console.log(`  [${i}]: "${p}"`));
 
     return improvedPrompts;
   } catch (error) {
